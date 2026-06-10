@@ -145,6 +145,7 @@ class CollabUI {
                 <select id="collab-layer-select" class="ct-select" title="当前编辑图层"></select>
                 <input type="color" id="collab-layer-color" class="ct-color" title="图层颜色" value="#3388ff">
                 <button id="collab-del-layer" class="ct-btn ct-danger">删除图层</button>
+                <button id="collab-history" class="ct-btn" title="查看当前图层的操作历史并撤销/回滚">↶历史</button>
                 <span class="ct-divider"></span>
                 <button class="ct-btn ct-draw" data-draw="Marker">📍点</button>
                 <button class="ct-btn ct-draw" data-draw="Line">／线</button>
@@ -242,6 +243,7 @@ class CollabUI {
 
         document.getElementById('collab-basemap').onclick = () => this.#openBasemapPanel();
         document.getElementById('collab-icons').onclick = () => this.#openIconPanel();
+        document.getElementById('collab-history').onclick = () => this.#openHistoryPanel();
     }
 
     #ensureLayer() {
@@ -527,6 +529,77 @@ class CollabUI {
             });
         };
         render();
+    }
+
+    // ========== 操作历史 / 撤销回滚 ==========
+    async #openHistoryPanel() {
+        if (!this.#activeLayerId || !this.#sync.getLayers().has(this.#activeLayerId)) {
+            this.#warnNoLayer('查看历史');
+            return;
+        }
+        const layerId = this.#activeLayerId;
+        const local = this.#sync.getLayers().get(layerId);
+        this.#removePanel();
+        const panel = this.#makePanel('↶ 操作历史：' + (local?.meta.name || ''));
+        panel.body.innerHTML = `<p class="pl-tip">正在加载历史快照…</p>`;
+
+        const render = async () => {
+            let history = [];
+            try {
+                history = await this.#sync.getLayerHistory(layerId);
+            } catch (err) {
+                panel.body.innerHTML = `<p class="pl-tip" style="color:#c62828">加载历史失败：${err.message || err}</p>`;
+                return;
+            }
+            const cur = this.#sync.getLayers().get(layerId);
+            const curCount = cur ? (cur.group.toGeoJSON().features || []).length : 0;
+            if (!history.length) {
+                panel.body.innerHTML = `
+                    <p class="pl-tip">当前版本：<b>v${cur ? cur.version : '-'}</b>（${curCount} 个要素）</p>
+                    <p class="pl-tip">该图层还没有历史快照。每次编辑保存后会自动记录一份，之后即可在此撤销/回滚。</p>`;
+                return;
+            }
+            const rows = history.map(h => `
+                <div class="pl-hist-item">
+                    <div class="pl-hist-info">
+                        <b>v${h.version}</b> · ${h.feature_count} 个要素<br>
+                        <span class="pl-hist-meta">${h.updated_by || '匿名'} · ${this.#fmtTime(h.saved_at)}</span>
+                    </div>
+                    <button class="ct-btn pl-hist-revert" data-hid="${h.id}" data-ver="${h.version}">回滚到此版本</button>
+                </div>`).join('');
+            panel.body.innerHTML = `
+                <p class="pl-tip">当前版本：<b>v${cur ? cur.version : '-'}</b>（${curCount} 个要素）。点击"回滚"可把图层恢复到对应历史版本，回滚操作会同步给所有协作者，且本身也可再次撤销。</p>
+                <div class="pl-hist-list">${rows}</div>`;
+            panel.body.querySelectorAll('.pl-hist-revert').forEach(btn => {
+                btn.onclick = async () => {
+                    const hid = Number(btn.dataset.hid);
+                    const ver = btn.dataset.ver;
+                    btn.disabled = true;
+                    btn.textContent = '回滚中…';
+                    try {
+                        const data = await this.#sync.revertLayer(layerId, hid);
+                        this.#refreshLayerSelect();
+                        this.#setStatus(`已回滚「${local?.meta.name}」到 v${ver}（当前为 v${data.version}）`);
+                        await render(); // 刷新历史列表
+                    } catch (err) {
+                        console.error('回滚失败:', err);
+                        btn.disabled = false;
+                        btn.textContent = '回滚到此版本';
+                        this.#setStatus('回滚失败：' + (err.message || err));
+                    }
+                };
+            });
+        };
+        await render();
+    }
+
+    // 友好时间格式 (后端存的是 UTC 字符串)
+    #fmtTime(s) {
+        if (!s) return '';
+        const d = new Date(s.replace(' ', 'T') + 'Z');
+        if (isNaN(d.getTime())) return s;
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getMonth() + 1}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
     // ========== 新建工程 / 新建图层 (非阻塞面板) ==========

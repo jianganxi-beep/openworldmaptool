@@ -156,6 +156,30 @@ class CollabSync {
         this.#fireChanged();
     }
 
+    // 获取某图层的历史快照列表 (用于"操作历史/撤销"面板)
+    async getLayerHistory(layerId) {
+        const res = await fetch(`${this.#apiBase}/layers/${layerId}/history`);
+        if (!res.ok) throw new Error(`服务器返回 ${res.status}`);
+        return res.json();
+    }
+
+    // 回滚图层到某个历史快照, 成功后本地重渲染并广播给协作者
+    async revertLayer(layerId, historyId) {
+        const res = await fetch(`${this.#apiBase}/layers/${layerId}/revert`, {
+            method: 'POST',
+            headers: this.#writeHeaders(),
+            body: JSON.stringify({ history_id: historyId, updated_by: this.#username })
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+            throw new Error((data && data.error) || `服务器返回 ${res.status}`);
+        }
+        // 用回滚后的最新数据重建本地图层
+        this.#renderLayer(data);
+        this.#fireChanged();
+        return data;
+    }
+
     // 拉取并渲染所有图层
     async refresh() {
         const res = await fetch(`${this.#apiBase}/projects/${this.#projectId}/layers`);

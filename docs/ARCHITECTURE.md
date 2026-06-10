@@ -59,6 +59,18 @@
 
 > 设计要点：**一个图层 = 一份 GeoJSON**。点位、区域、路线都作为 Feature 存在所属图层的 geojson 字段里。
 
+### layer_history（图层历史快照，用于撤销/回滚）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER PK | 自增 |
+| layer_id | INTEGER FK | 所属图层，`ON DELETE CASCADE` |
+| version | INTEGER | 该快照对应的图层版本号 |
+| geojson | TEXT | 快照时刻的完整 GeoJSON |
+| name / color / updated_by | TEXT | 快照时的元信息 |
+| saved_at | TEXT | 快照时间 |
+
+> 机制：每次 `PUT /api/layers/:id` 保存成功后，把**被覆盖的旧版本**存一份进此表；回滚时也会先把当前版本存进来（所以回滚可再撤销）。每个图层最多保留 `MAX_HISTORY_PER_LAYER`（默认 30）条，超出清理最旧的，防止膨胀。
+
 ---
 
 ## 3. REST API 接口表
@@ -72,6 +84,8 @@
 | POST | `/api/projects/:id/layers` | 新建图层 | body: `{name,color}`，广播 |
 | PUT | `/api/layers/:id` | 保存图层 GeoJSON | **乐观锁**，body 带 `version`；冲突返回 409 |
 | DELETE | `/api/layers/:id` | 删除图层 | 广播 |
+| GET | `/api/layers/:id/history` | 查看图层历史快照列表 | 返回版本/时间/要素数，不含完整 geojson |
+| POST | `/api/layers/:id/revert` | 回滚图层到某历史快照 | body: `{history_id, updated_by}`，作为新版本保存并广播；回滚本身可再撤销 |
 | GET | `/api/health` | 健康检查 | |
 
 所有写请求可带头 `X-Client-Id`，用于广播时排除发起者自己（避免自我重复刷新）。

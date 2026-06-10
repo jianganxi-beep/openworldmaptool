@@ -257,3 +257,38 @@
     cursor: pointer;
     line-height: 1;
 }
+
+/* 操作历史 / 撤销 列表 */
+#planner-panel .pl-hist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#planner-panel .pl-hist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+    background: #fafbfc;
+}
+
+#planner-panel .pl-hist-info {
+    font-size: 12px;
+    color: #333;
+    line-height: 1.5;
+}
+
+#planner-panel .pl-hist-meta {
+    color: #888;
+    font-size: 11px;
+}
+
+#planner-panel .pl-hist-revert {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+

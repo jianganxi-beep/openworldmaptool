@@ -45,7 +45,24 @@ CREATE TABLE IF NOT EXISTS layers (
     updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
+
+-- 图层历史快照: 每次保存前把"旧版本"存一份, 用于操作历史查看与撤销/回滚
+CREATE TABLE IF NOT EXISTS layer_history (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    layer_id    INTEGER NOT NULL,
+    version     INTEGER NOT NULL,
+    geojson     TEXT NOT NULL,
+    name        TEXT,
+    color       TEXT,
+    updated_by  TEXT DEFAULT '',
+    saved_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (layer_id) REFERENCES layers(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_history_layer ON layer_history(layer_id);
 `);
+
+// 每个图层最多保留的历史快照数 (超出则清理最旧的, 防止数据库膨胀)
+const MAX_HISTORY_PER_LAYER = 30;
 
 // 若没有任何工程, 自动建立一个默认工程, 方便开箱即用
 const projectCount = db.prepare('SELECT COUNT(*) AS c FROM projects').get().c;
@@ -164,6 +181,9 @@ app.put('/api/layers/:id', (req, res) => {
         req.params.id
     );
 
+    // 保存成功后, 把"刚刚被覆盖的旧版本"存入历史快照, 供撤销/回滚
+    saveHistorySnapshot(current);
+
     const row = db.prepare('SELECT * FROM layers WHERE id = ?').get(req.params.id);
     if (global.__notifyLayersChanged) {
         global.__notifyLayersChanged(current.project_id, 'update', row.id, req.get('X-Client-Id'));
@@ -179,6 +199,76 @@ app.delete('/api/layers/:id', (req, res) => {
         global.__notifyLayersChanged(current.project_id, 'delete', current.id, req.get('X-Client-Id'));
     }
     res.json({ ok: true });
+});
+
+// ===== 图层历史 / 撤销回滚 =====
+
+// 把某图层的某个版本存入历史快照, 并清理超量的旧记录
+function saveHistorySnapshot(layerRow) {
+    db.prepare(`
+        INSERT INTO layer_history (layer_id, version, geojson, name, color, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?)
+    `).run(layerRow.id, layerRow.version, layerRow.geojson, layerRow.name, layerRow.color, layerRow.updated_by || '');
+
+    // 仅保留最近 MAX_HISTORY_PER_LAYER 条
+    const ids = db.prepare(
+        'SELECT id FROM layer_history WHERE layer_id = ? ORDER BY id DESC LIMIT ? OFFSET ?'
+    ).all(layerRow.id, 1000, MAX_HISTORY_PER_LAYER);
+    if (ids.length) {
+        const delStmt = db.prepare('DELETE FROM layer_history WHERE id = ?');
+        for (const r of ids) delStmt.run(r.id);
+    }
+}
+
+// 查看某图层的历史快照列表 (按时间倒序, 含要素数量统计, 不返回完整 geojson 以减小体积)
+app.get('/api/layers/:id/history', (req, res) => {
+    const rows = db.prepare(
+        'SELECT id, version, name, color, updated_by, saved_at, geojson FROM layer_history WHERE layer_id = ? ORDER BY id DESC'
+    ).all(req.params.id);
+    const list = rows.map(r => {
+        let featureCount = 0;
+        try { featureCount = (JSON.parse(r.geojson).features || []).length; } catch { /* ignore */ }
+        return {
+            id: r.id,
+            version: r.version,
+            name: r.name,
+            color: r.color,
+            updated_by: r.updated_by,
+            saved_at: r.saved_at,
+            feature_count: featureCount
+        };
+    });
+    res.json(list);
+});
+
+// 回滚: 把图层恢复到某个历史快照的内容 (作为一次新的保存, 因此回滚本身也可被再次撤销)
+app.post('/api/layers/:id/revert', (req, res) => {
+    const layerId = Number(req.params.id);
+    const { history_id, updated_by } = req.body;
+    const snapshot = db.prepare('SELECT * FROM layer_history WHERE id = ? AND layer_id = ?').get(history_id, layerId);
+    if (!snapshot) {
+        return res.status(404).json({ error: '历史快照不存在' });
+    }
+    const current = db.prepare('SELECT * FROM layers WHERE id = ?').get(layerId);
+    if (!current) {
+        return res.status(404).json({ error: '图层不存在' });
+    }
+
+    // 先把"当前版本"也存进历史 (这样回滚后还能再撤销回来)
+    saveHistorySnapshot(current);
+
+    const newVersion = current.version + 1;
+    db.prepare(`
+        UPDATE layers
+        SET geojson = ?, version = ?, updated_by = ?, updated_at = datetime('now')
+        WHERE id = ?
+    `).run(snapshot.geojson, newVersion, updated_by || '', layerId);
+
+    const row = db.prepare('SELECT * FROM layers WHERE id = ?').get(layerId);
+    if (global.__notifyLayersChanged) {
+        global.__notifyLayersChanged(current.project_id, 'update', layerId, req.get('X-Client-Id'));
+    }
+    res.json({ ...row, geojson: JSON.parse(row.geojson), reverted_to_version: snapshot.version });
 });
 
 // 健康检查
