@@ -1,0 +1,27 @@
+# ---- Node 依赖 ----
+node_modules/
+server/node_modules/
+
+# ---- 运行时数据库 (协作数据, 不入版本库) ----
+server/planner.db
+server/planner.db-shm
+server/planner.db-wal
+*.sqlite
+*.sqlite3
+
+# ---- 测试/调试截图 (不入版本库, 体积大) ----
+verify_*.png
+preview*.png
+
+# ---- 日志与临时文件 ----
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.tmp
+.cache/
+
+# ---- 编辑器/IDE ----
+.vscode/
+.idea/
+*.swp

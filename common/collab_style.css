@@ -1,0 +1,259 @@
+/* 协作工具条样式 */
+#collab-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1200;
+    background: rgba(30, 34, 42, 0.96);
+    color: #e8e8e8;
+    padding: 6px 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 13px;
+}
+
+#collab-toolbar .ct-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+#collab-toolbar .ct-user {
+    cursor: pointer;
+    padding: 4px 8px;
+    background: #3a4150;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+#collab-toolbar .ct-user:hover {
+    background: #4a5365;
+}
+
+#collab-toolbar .ct-online {
+    padding: 4px 8px;
+    background: #25402f;
+    color: #7ee2a8;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: default;
+    white-space: nowrap;
+}
+
+#collab-toolbar .ct-online.ct-online-off {
+    background: #3a3f48;
+    color: #9aa0aa;
+}
+
+#collab-toolbar .ct-btn {
+    background: #4a5365;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+#collab-toolbar .ct-btn:hover {
+    background: #5d6880;
+}
+
+#collab-toolbar .ct-btn.ct-draw {
+    background: #2f6f4f;
+}
+
+#collab-toolbar .ct-btn.ct-draw:hover {
+    background: #3a8a62;
+}
+
+#collab-toolbar .ct-btn.ct-danger {
+    background: #8a3a3a;
+}
+
+#collab-toolbar .ct-btn.ct-danger:hover {
+    background: #a84545;
+}
+
+#collab-toolbar .ct-select {
+    background: #2b2f38;
+    color: #fff;
+    border: 1px solid #4a5365;
+    border-radius: 4px;
+    padding: 4px 6px;
+    max-width: 160px;
+}
+
+#collab-toolbar .ct-color {
+    width: 32px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+}
+
+#collab-toolbar .ct-divider {
+    width: 1px;
+    height: 22px;
+    background: #4a5365;
+    margin: 0 4px;
+}
+
+#collab-toolbar .ct-status {
+    color: #7ee2a8;
+    margin-left: 8px;
+    font-weight: bold;
+}
+
+/* 把地图主体往下推, 避免被工具条遮挡 */
+#map {
+    top: 44px !important;
+}
+
+/* 规划字段弹窗 */
+.planner-popup p {
+    margin: 4px 0;
+}
+
+.planner-popup label {
+    font-size: 12px;
+    color: #333;
+}
+
+.planner-popup input,
+.planner-popup select,
+.planner-popup textarea {
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 3px 5px;
+    margin-top: 2px;
+}
+
+/* 底图/图标管理浮动面板 */
+#planner-panel {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+    z-index: 1500;
+    width: 340px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+}
+
+#planner-panel .pl-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #2f3d4d;
+    color: #fff;
+    padding: 10px 14px;
+    font-weight: bold;
+}
+
+#planner-panel .pl-close {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+#planner-panel .pl-body {
+    padding: 14px;
+    max-height: 70vh;
+    overflow-y: auto;
+    color: #333;
+    font-size: 13px;
+}
+
+#planner-panel .pl-tip {
+    color: #777;
+    font-size: 12px;
+    margin: 0 0 10px;
+    line-height: 1.5;
+}
+
+#planner-panel .pl-field {
+    margin-bottom: 12px;
+}
+
+#planner-panel .pl-field > label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+#planner-panel .pl-filename {
+    display: inline-block;
+    margin-top: 5px;
+    font-size: 12px;
+    color: #2e7d32;
+    word-break: break-all;
+}
+
+#planner-panel .pl-field input[type="text"],
+#planner-panel .pl-field input[type="number"] {
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px 7px;
+}
+
+#planner-panel .pl-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+#planner-panel .pl-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+#planner-panel .pl-icon-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#planner-panel .pl-icon-item {
+    position: relative;
+    width: 64px;
+    text-align: center;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 6px 4px;
+}
+
+#planner-panel .pl-icon-item span {
+    display: block;
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#planner-panel .pl-icon-del {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: #c0392b;
+    color: #fff;
+    font-size: 11px;
+    cursor: pointer;
+    line-height: 1;
+}
